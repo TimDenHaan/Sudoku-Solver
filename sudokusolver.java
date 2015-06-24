@@ -292,7 +292,7 @@ public class sudokusolver {
 	public static int[][] Solve (int[][] input){
 		int size = 9;		
 		ArrayList<ArrayList<ArrayList<Integer>>> grid = new ArrayList<ArrayList<ArrayList<Integer>>>(size);		//creates a 9x9 grid of ArrayLists (ArrayList x ArrayList)
-		for(int i = 0; i < size; i++){																			//with  an ArrayList of possibilities (integers) at the 81 spots
+		for(int i = 0; i < size; i++){	//create a 9x9 grid of ArrayList(Integer)																		//with  an ArrayList of possibilities (integers) at the 81 spots
 			ArrayList<ArrayList<Integer>> row = new ArrayList<ArrayList<Integer>>(size);
 			
 			for (int j = 0; j < size; j++){
@@ -300,7 +300,7 @@ public class sudokusolver {
 			}
 			grid.add(row);
 		}
-		for(int i = 0; i < size; i++){
+		for(int i = 0; i < size; i++){//fill the grid with the given input
 			for(int j = 0; j < size; j++){
 				if(input[i][j] == 0){//if no value for a spot has been given, every integer from 1 to 9 is a possibility
 					grid.get(i).remove(j);
