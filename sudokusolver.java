@@ -3,14 +3,16 @@ import java.util.*;
 
 public class sudokusolver {
 	
-	public static ArrayList<ArrayList<ArrayList<Integer>>> Eliminate (ArrayList<ArrayList<ArrayList<Integer>>> grid, int min){
+	public static ArrayList<ArrayList<ArrayList<ArrayList<Integer>>>> Eliminate (ArrayList<ArrayList<ArrayList<ArrayList<Integer>>>> solution, int min, int solutionIndex){		
 		int max = 0; //to count number of spots found
-		int size = 9;	//many things in the sudoku problem have size 9	
+		int size = 9;	//many things in the sudoku problem have size 9			
+		ArrayList<ArrayList<ArrayList<Integer>>> grid = solution.get(solutionIndex);		
+		solution.remove(solutionIndex);
 		
 		for (int i = 0; i < size; i++){//for every spot
 			for(int j = 0; j < size; j++){	//for every spot
 				if(grid.get(i).get(j).size() > 1){	//if no solution has been found yet for this spot
-					int [] square = DetermineSquare(i,j);	//determine the square in the sudoku
+					int[] square = DetermineSquare(i,j);	//determine the square in the sudoku
 					
 					for(int k = 0; k < size; k++){	//for every column/row				
 						if(k != i && grid.get(k).get(j).size() == 1){//column search by scanning different rows in same column
@@ -130,10 +132,10 @@ public class sudokusolver {
 				}			
 			}		
 		}			
-		if(max != min && max < 81){		//if there has been progress and not a full solution				
-			grid = Eliminate(grid,max); //eliminate possibilities
-			//returns a false solution iff a wrong possiblity has been chosen, they get filtered out in line 192
-			return grid;
+		if(max != min && max < 81){		//if there has been progress and not a full solution			
+			solution.add(solutionIndex,grid);	//continue solving the current solution			
+			solution = Eliminate(solution,max,solutionIndex); //eliminate possibilities			
+			return solution;
 		}
 		else if(max == min && max < 81){ //if no progress has been made and not a full solution
 		
@@ -150,8 +152,8 @@ public class sudokusolver {
 					}
 				}
 			}			
-			for(int k = 0; k < few; k++){ //as long as no solution can be found, try the next possibility				
-					
+			for(int k = 0; k < few; k++){ //as long as no solution can be found, try the next possibility					
+				
 				ArrayList<Integer> y = new ArrayList<Integer>(1); //set value of current spot to the value of possibility k
 				ArrayList<ArrayList<ArrayList<Integer>>> guess = Copy(grid); //create a copy of grid, so we can return to this point if needed				
 				int x = guess.get(a).get(b).get(k); //get value of possibility k				
@@ -159,15 +161,28 @@ public class sudokusolver {
 				guess.get(a).remove(b);
 				guess.get(a).add(b,y);						
 				
-				guess = Eliminate(guess, max+1); //solve the sudoku with the chosen possibility				
-				if(CheckSolution(guess)){//if a solution has been found return it					
-					return guess;					
-				}					
-			}	
+				solution.add(solutionIndex, guess);	//solve the sudoku with the chosen possibility			
+				solution = Eliminate(solution, max+1, solutionIndex);								
+				if(CheckSolution(solution.get(solutionIndex)) && IsNew(solution)){//if a new solution has been found continue to the next	
+					
+					solutionIndex++;	
+					if(solution.size() == 101){//if there are more than 100 solutions, stop
+						return(solution);
+					}					
+				}
+				else{//the result is not a (new) solution
+					solution.remove(solutionIndex);					
+				}				
+			}
+			if(solution.size() == 0){//if a path of guesses hasn't resulted in any solutions, and no solutions has been found yet, go back 1 step and take a different guess
+				solution.add(grid);
+			}
+			return(solution); //all possible guesses have been tried, we have finished
+		}
+		else{//max == 81, 1 digit at every spot			
+			solution.add(solutionIndex, grid);			
+			return solution; //returns a wrong 'solution' iff a wrong possibility has been 'guessed' (and gets filtered out in line 166)
 		}		
-		
-		//max == 81, 1 digit at every spot			
-		return grid; //returns a wrong 'solution' iff a wrong possibility has been 'guessed' (and gets filtered out in line 192)
 	}
 	public static int[] DetermineSquare (int i, int j){	
 		/* to determine the location of the spot in the sudoku:
@@ -289,10 +304,29 @@ public class sudokusolver {
 		
 		return true;
 	}
-	public static int[][] Solve (int[][] input){
+	public static boolean IsNew(ArrayList<ArrayList<ArrayList<ArrayList<Integer>>>> solution){
+		int size = 9;
+		ArrayList<ArrayList<ArrayList<Integer>>> newSol = solution.get(solution.size()-1);
+		for(int k = 0; k < solution.size() - 1; k++){//for every solution so far
+			int equal = 0;
+			ArrayList<ArrayList<ArrayList<Integer>>> sol = solution.get(k);
+			for(int i = 0; i < size; i++){//check for every spot
+				for(int j = 0; j < size; j++){
+					if(newSol.get(i).get(j).get(0) == sol.get(i).get(j).get(0)){
+						equal++;
+					}
+				}
+			}
+			if(equal == 81){//exactly the same solution
+				return false;
+			}
+		}
+		return true;
+	}
+	public static int[][][] Solve (int[][] input){
 		int size = 9;		
 		ArrayList<ArrayList<ArrayList<Integer>>> grid = new ArrayList<ArrayList<ArrayList<Integer>>>(size);		//creates a 9x9 grid of ArrayLists (ArrayList x ArrayList)
-		for(int i = 0; i < size; i++){	//create a 9x9 grid of ArrayList(Integer)																		//with  an ArrayList of possibilities (integers) at the 81 spots
+		for(int i = 0; i < size; i++){																			//with  an ArrayList of possibilities (integers) at the 81 spots
 			ArrayList<ArrayList<Integer>> row = new ArrayList<ArrayList<Integer>>(size);
 			
 			for (int j = 0; j < size; j++){
@@ -300,7 +334,7 @@ public class sudokusolver {
 			}
 			grid.add(row);
 		}
-		for(int i = 0; i < size; i++){//fill the grid with the given input
+		for(int i = 0; i < size; i++){
 			for(int j = 0; j < size; j++){
 				if(input[i][j] == 0){//if no value for a spot has been given, every integer from 1 to 9 is a possibility
 					grid.get(i).remove(j);
@@ -318,20 +352,26 @@ public class sudokusolver {
 				}
 			}
 	
-		}		
-		grid = Eliminate(grid,0); //solve the sudoku puzzle
-		for(int i = 0; i < size; i++){
-			for(int j = 0; j < size; j++){
-				input[i][j] = grid.get(i).get(j).get(0); //transform the solution back to int[][]
-			}
+		}	
+		ArrayList<ArrayList<ArrayList<ArrayList<Integer>>>> solution = new ArrayList<ArrayList<ArrayList<ArrayList<Integer>>>>(size); //create a list of solutions
+		solution.add(0,grid); //add the current at the first spot
+		solution = Eliminate(solution,0,0); //solve the sudoku puzzle
+		
+		int[][][] output = new int[9][9][solution.size()]; //create array for output
+		
+		for(int k = 0; k < solution.size() ; k++){		//for every solution	
+			for(int i = 0; i < size; i++){
+				for(int j = 0; j < size; j++){				
+					output[i][j][k] = solution.get(k).get(i).get(j).get(0); //transform the solution back to int[][]
+				}
+			}			
 		}
-		return input;		//return solution	
+		return output;		//return solution(s)
 	}
 	public static void main(String[] args) {
-		int[][] input = new int[9][9];	
-		int[][] input2 = new int[9][9];
+		int[][] input = new int[9][9];		
 		
-		/*easy sudoku
+		/*easy sudoku*
 		input[0][0] = 5;
 		input[0][1] = 3;
 		input[0][4] = 7;
@@ -369,9 +409,9 @@ public class sudokusolver {
 		
 		input[8][4] = 8;
 		input[8][7] = 7;
-		input[8][8] = 9;*/
+		input[8][8] = 9;
 		
-		/*hard sudoku
+		/*hard sudoku*
 		
 		input[1][5] = 3;
 		input[1][7] = 8;
@@ -398,7 +438,7 @@ public class sudokusolver {
 		input[8][4] = 4;
 		input[8][8] = 9;*/
 		
-		/* "guess" sudoku
+		/* "guess" sudoku*
 		
 		input[0][1] = 7;
 		input[0][5] = 3;
@@ -427,7 +467,7 @@ public class sudokusolver {
 		input[8][3] = 4;
 		input[8][7] = 1;*/
 		
-		/* another guess sudoku
+		/* another guess sudoku*
 		
 		input[0][1] = 3;
 		input[0][2] = 4;
@@ -455,7 +495,7 @@ public class sudokusolver {
 		input[8][0] = 7;*/
 		
 		
-		/*and another 'guess' sudoku*/
+		/*and another 'guess' sudoku*
 		input[0][0] = 3;
 		input[0][1] = 1;
 		input[0][3] = 6;
@@ -484,9 +524,41 @@ public class sudokusolver {
 		
 		input[8][5] = 7;
 		input[8][7] = 4;
-		input[8][8] = 2;
+		input[8][8] = 2;*/
 	
-	
+		/*multiple solutions*/
+		input[0][1] = 8;
+		input[0][5] = 9;
+		input[0][6] = 7;
+		input[0][7] = 4;
+		input[0][8] = 3;
+		
+		input[1][1] = 5;
+		input[1][5] = 8;
+		input[1][7] = 1;
+		
+		input[2][1] = 1;
+		
+		input[3][0] = 8;
+		input[3][5] = 5;
+		
+		input[4][3] = 8;
+		input[4][5] = 4;
+		
+		input[5][3] = 3;
+		input[5][8] = 6;
+		
+		input[6][7] = 7;
+		
+		input[7][1] = 3;
+		input[7][3] = 5;
+		input[7][7] = 8;
+		
+		input[8][0] = 9;
+		input[8][1] = 7;
+		input[8][2] = 2;
+		input[8][3] = 4;
+		input[8][7] = 5;
 		
 		System.out.println("Input:");
 		for(int i = 0; i < 9; i++){//print input sudoku
@@ -495,17 +567,28 @@ public class sudokusolver {
 			}
 			System.out.print("\n");
 		}
-		System.out.println("\n\n\nSolution:");
-		input = Solve(input); //solve the sudoku
 		
 		
-		for(int i = 0; i < 9; i++){//print solution
-			for(int j = 0; j < 9; j++){
-				System.out.print(input[i][j] + "\t");
-			}
-			System.out.print("\n");
+		int[][][] solution = Solve(input); //solve the sudoku		
+		
+		int amount = solution[0][0].length;	
+		if(amount == 101){
+			System.out.println("\n\n\nNumber of solutions: more than 100. Showing first 100: ");
+			amount = 100;
 		}
-		
+		else{
+			System.out.println("\n\n\nNumber of solutions: " + amount + "\n");
+		}
+		for(int k = 0; k < amount; k++){
+			System.out.println("Solution " + (k+1) + ":");
+			for(int i = 0; i < 9; i++){//print solution
+				for(int j = 0; j < 9; j++){
+					System.out.print(solution[i][j][k] + "\t");
+				}
+				System.out.print("\n");
+			}
+			System.out.println("\n");
+		}		
 	}
 
 }
